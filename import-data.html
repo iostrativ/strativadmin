@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Import Data to New Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .warning {
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+    }
+    .status {
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+    }
+    .success {
+      background: #e8f5e9;
+      border-left-color: #4caf50;
+    }
+    .error {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+    .config {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+    .config input {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0 15px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .config label {
+      font-weight: 500;
+      color: #555;
+    }
+    button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    button:hover:not(:disabled) {
+      background: #1976d2;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .file-input {
+      margin: 20px 0;
+      padding: 20px;
+      border: 2px dashed #ddd;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .file-input input {
+      margin-top: 10px;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .progress {
+      margin: 5px 0;
+      padding: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📥 Import Data to New Supabase Project</h1>
+    <p>Import your exported Lovable data into your new Supabase instance.</p>
+
+    <div class="warning">
+      <strong>⚠️ Before you start:</strong>
+      <ol style="margin: 10px 0 0 20px;">
+        <li>Create a new Supabase project at <a href="https://supabase.com" target="_blank">supabase.com</a></li>
+        <li>Run the <code>complete-setup.sql</code> file in the SQL Editor first</li>
+        <li>Have your export JSON file ready (from export-data.html)</li>
+      </ol>
+    </div>
+
+    <div class="config">
+      <h3>New Supabase Configuration</h3>
+      <label>Project URL:</label>
+      <input type="text" id="supabaseUrl" placeholder="https://your-project-ref.supabase.co">
+
+      <label>Anon/Public Key:</label>
+      <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    </div>
+
+    <div class="file-input">
+      <h3>Select Export File</h3>
+      <input type="file" id="fileInput" accept=".json">
+    </div>
+
+    <div id="status" class="status" style="display: none;"></div>
+    <div id="progress"></div>
+
+    <button id="importBtn">Import Data</button>
+
+    <div id="summary" style="margin-top: 20px;"></div>
+  </div>
+
+  <script>
+    let client;
+    let exportData;
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            exportData = JSON.parse(e.target.result);
+            showStatus('✅ File loaded successfully!', 'success');
+          } catch (error) {
+            showStatus('❌ Invalid JSON file: ' + error.message, 'error');
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    function showStatus(message, type = 'status') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.className = 'status ' + type;
+      statusDiv.textContent = message;
+      statusDiv.style.display = 'block';
+    }
+
+    function addProgress(message, isSuccess = true) {
+      const progressDiv = document.getElementById('progress');
+      const icon = isSuccess ? '✅' : '⚠️';
+      progressDiv.innerHTML += `<div class="progress">${icon} ${message}</div>`;
+      progressDiv.scrollTop = progressDiv.scrollHeight;
+    }
+
+    async function importData() {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+
+      if (!url || !key) {
+        showStatus('❌ Please enter both Supabase URL and key', 'error');
+        return;
+      }
+
+      if (!exportData) {
+        showStatus('❌ Please select an export file first', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('importBtn');
+      btn.disabled = true;
+
+      try {
+        // Initialize Supabase client with new credentials
+        client = window.supabase.createClient(url, key);
+
+        showStatus('🚀 Starting import...', 'status');
+        document.getElementById('progress').innerHTML = '';
+
+        const summary = {
+          successful: 0,
+          failed: 0,
+          skipped: 0
+        };
+
+        // Order matters! Import in dependency order
+        const importOrder = [
+          // Skip profiles and user_roles (will be created by auth)
+          'site_settings',
+          'categories',
+          'tags',
+          'pages',
+          'page_sections',
+          'menu_items',
+          'services',
+          'portfolio_items',
+          'portfolio_images',
+          'team_members',
+          'blog_posts',
+          'post_tags',
+          'testimonials',
+          'client_logos',
+          'media_assets',
+          'contact_submissions',
+          // Home/About data should already be seeded by complete-setup.sql
+          // but we can skip if they exist in export
+        ];
+
+        for (const table of importOrder) {
+          const records = exportData[table] || [];
+
+          if (records.length === 0) {
+            addProgress(`⏭️ Skipping ${table} (no data)`, true);
+            summary.skipped++;
+            continue;
+          }
+
+          addProgress(`📥 Importing ${table} (${records.length} records)...`, true);
+
+          try {
+            // Insert records in batches of 100
+            const batchSize = 100;
+            for (let i = 0; i < records.length; i += batchSize) {
+              const batch = records.slice(i, i + batchSize);
+              const { error } = await client.from(table).insert(batch);
+
+              if (error) {
+                // If it's a unique constraint violation, try one by one
+                if (error.code === '23505') {
+                  let successCount = 0;
+                  for (const record of batch) {
+                    const { error: singleError } = await client.from(table).insert(record);
+                    if (!singleError) successCount++;
+                  }
+                  addProgress(`  ✅ Imported ${successCount}/${batch.length} from batch`, true);
+                } else {
+                  throw error;
+                }
+              }
+            }
+
+            addProgress(`✅ ${table}: ${records.length} records imported`, true);
+            summary.successful++;
+          } catch (error) {
+            addProgress(`❌ ${table}: ${error.message}`, false);
+            summary.failed++;
+          }
+        }
+
+        // Show final summary
+        const summaryDiv = document.getElementById('summary');
+        summaryDiv.innerHTML = `
+          <div class="status success">
+            <h3>✅ Import Complete!</h3>
+            <ul>
+              <li><strong>Successful:</strong> ${summary.successful} tables</li>
+              <li><strong>Failed:</strong> ${summary.failed} tables</li>
+              <li><strong>Skipped:</strong> ${summary.skipped} tables</li>
+            </ul>
+            <p style="margin-top: 15px;">
+              <strong>Next steps:</strong>
+              <ol style="margin: 10px 0 0 20px;">
+                <li>Update your <code>.env</code> file with the new Supabase credentials</li>
+                <li>Restart your development server</li>
+                <li>Sign up as a new user (first user becomes admin automatically)</li>
+                <li>Test your CMS!</li>
+              </ol>
+            </p>
+          </div>
+        `;
+
+        showStatus('✅ Import process completed!', 'success');
+
+      } catch (error) {
+        showStatus(`❌ Import failed: ${error.message}`, 'error');
+        console.error(error);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Attach click handler when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('importBtn').addEventListener('click', importData);
+    });
+  </script>
+</body>
+</html>

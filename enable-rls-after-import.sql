@@ -1,0 +1,29 @@
+-- =============================================
+-- RE-ENABLE RLS AFTER DATA IMPORT
+-- Run this AFTER importing data successfully
+-- =============================================
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.page_sections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.portfolio_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.portfolio_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.testimonials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_logos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.media_assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contact_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contact_form_fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.home_sections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.home_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.about_sections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.about_values ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.about_timeline ENABLE ROW LEVEL SECURITY;

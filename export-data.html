@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Export Lovable Data</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .status {
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+    }
+    .success {
+      background: #e8f5e9;
+      border-left-color: #4caf50;
+    }
+    .error {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+    button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+    button:hover {
+      background: #1976d2;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .progress {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📦 Export Data from Lovable Supabase</h1>
+    <p>This will export all your current CMS data (users, pages, portfolio, blog, services, team, etc.)</p>
+
+    <div id="status" class="status">
+      Ready to export. Click the button below.
+    </div>
+
+    <div id="progress"></div>
+
+    <button id="exportBtn">Export All Data</button>
+
+    <div id="output" style="margin-top: 20px;"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://tajpwrepuvogicxgljja.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhanB3cmVwdXZvZ2ljeGdsamphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAwMzgxODEsImV4cCI6MjA4NTYxNDE4MX0.GcC0fB5LcXaVsblDTH6Z_4pYoqPD-0imXdAlGtummb0';
+
+    let client;
+
+    // Wait for Supabase library to load
+    window.addEventListener('load', () => {
+      if (window.supabase) {
+        client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } else {
+        console.error('Supabase library not loaded');
+      }
+    });
+
+    const tables = [
+      'profiles',
+      'user_roles',
+      'pages',
+      'page_sections',
+      'services',
+      'portfolio_items',
+      'portfolio_images',
+      'blog_posts',
+      'team_members',
+      'testimonials',
+      'contact_submissions',
+      'contact_form_fields',
+      'site_settings',
+      'menu_items',
+      'categories',
+      'tags',
+      'post_tags',
+      'client_logos',
+      'media_assets'
+    ];
+
+    async function exportData() {
+      if (!client) {
+        alert('Error: Supabase library not loaded. Please refresh the page.');
+        return;
+      }
+      const btn = document.getElementById('exportBtn');
+      const statusDiv = document.getElementById('status');
+      const progressDiv = document.getElementById('progress');
+      const outputDiv = document.getElementById('output');
+
+      btn.disabled = true;
+      statusDiv.className = 'status';
+      statusDiv.textContent = 'Exporting data...';
+      progressDiv.innerHTML = '';
+      outputDiv.innerHTML = '';
+
+      const exportedData = {};
+
+      try {
+        for (let i = 0; i < tables.length; i++) {
+          const table = tables[i];
+          progressDiv.innerHTML += `<div class="progress">📥 Fetching ${table}...</div>`;
+
+          const { data, error } = await client
+            .from(table)
+            .select('*');
+
+          if (error) {
+            // Ignore "table not found" errors (PGRST116, PGRST205)
+            if (error.code === 'PGRST116' || error.code === 'PGRST205') {
+              progressDiv.innerHTML += `<div class="progress">⏭️ ${table}: Table doesn't exist (skipping)</div>`;
+              continue;
+            }
+            throw error;
+          }
+
+          exportedData[table] = data || [];
+          progressDiv.innerHTML += `<div class="progress">✅ ${table}: ${(data || []).length} records</div>`;
+        }
+
+        // Create downloadable JSON file
+        const jsonString = JSON.stringify(exportedData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = `lovable-export-${new Date().toISOString().split('T')[0]}.json`;
+        downloadLink.textContent = '💾 Download Export File (lovable-export.json)';
+        downloadLink.style.display = 'block';
+        downloadLink.style.marginTop = '20px';
+        downloadLink.style.padding = '12px 24px';
+        downloadLink.style.background = '#4caf50';
+        downloadLink.style.color = 'white';
+        downloadLink.style.textDecoration = 'none';
+        downloadLink.style.borderRadius = '4px';
+        downloadLink.style.textAlign = 'center';
+
+        outputDiv.appendChild(downloadLink);
+
+        // Auto-download
+        downloadLink.click();
+
+        statusDiv.className = 'status success';
+        statusDiv.textContent = '✅ Export complete! File downloaded. Save this file - you\'ll need it for import.';
+
+      } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = `❌ Error: ${error.message}`;
+        console.error(error);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Attach click handler when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('exportBtn').addEventListener('click', exportData);
+    });
+  </script>
+</body>
+</html>
